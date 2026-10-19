@@ -1,3 +1,0 @@
-# AJAZZ / Epomaker AK820 Pro — let the logged-in user (CLI + Chrome WebHID) open its hidraw nodes
-KERNEL=="hidraw*", ATTRS{idVendor}=="0c45", ATTRS{idProduct}=="800a", TAG+="uaccess"
-KERNEL=="hidraw*", ATTRS{idVendor}=="0c45", ATTRS{idProduct}=="8009", TAG+="uaccess"

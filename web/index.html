@@ -344,12 +344,13 @@ textarea { font: inherit; color: var(--ink); background: var(--field); border: 1
         <details>
           <summary>Linux: "Connect" fails or the keyboard isn't listed</summary>
           <p>Linux doesn't let browsers open keyboards by default. Install this rule once, then unplug and replug the keyboard:</p>
-<pre><code>echo 'KERNEL=="hidraw*", ATTRS{idVendor}=="0c45", ATTRS{idProduct}=="800a|8009", TAG+="uaccess"' \
-  | sudo tee /etc/udev/rules.d/99-ak820.rules
+<pre><code>echo 'KERNEL=="hidraw*", ATTRS{idVendor}=="0c45", ATTRS{idProduct}=="800a|8009|fefe", TAG+="uaccess"' \
+  | sudo tee /etc/udev/rules.d/70-ak820.rules
 sudo udevadm control --reload && sudo udevadm trigger</code></pre>
         </details>
         <details>
           <summary>Limits</summary>
+          <p><strong>Pictures last until you unplug.</strong> On current firmware (1.16) the keyboard shows what you send only while it stays plugged in on the cable in wired mode. Unplugging it or switching to 2.4 GHz or Bluetooth brings back its built-in screen. The official AJAZZ tools behave the same way. History (above) lets you put it back in one click.</p>
           <p>The screen is 128 × 128 pixels with 16-bit colour. The keyboard stores up to about 140 frames (it reports its exact limit after you connect). Sending is roughly 30 KB/s, so a full 140-frame animation takes about 2½ minutes. Keep the cable plugged in until it finishes. Effects on a still image make a short loop (24 frames by default), which sends in under a minute.</p>
         </details>
         <details>

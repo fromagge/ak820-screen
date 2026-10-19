@@ -77,7 +77,7 @@ class Iface:
         try:
             self.fd = os.open(path, os.O_RDWR)
         except PermissionError:
-            sys.exit(f"no permission on {path} — install 99-ak820.rules (see README)")
+            sys.exit(f"no permission on {path} — install 70-ak820.rules (see README)")
 
     def drain(self):
         while select.select([self.fd], [], [], 0)[0]:

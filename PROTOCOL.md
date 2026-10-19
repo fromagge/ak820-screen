@@ -106,3 +106,30 @@ Payload (24 bytes, rest zero): `5A 01 5A YY MM DD hh mm ss wd` (YY = year % 100,
 
 Note: the vendor only enables the stats page (`isShowTftInfo`) for some models;
 the AK820 Pro config doesn't set it, so this may be ignored by its firmware.
+
+## Persistence
+
+On firmware 1.16 an animation sent with `0x50` is displayed immediately but held in RAM only: it is lost
+when the cable is unplugged or the keyboard changes mode. A capture of the vendor web driver
+(`captures/vendor-upload.log`) shows it sends exactly the same `0x50` packets and nothing else; its
+uploads are lost the same way.
+
+The Windows driver `DeviceDriver.exe` V1.0.0.5 (MFC + hidapi) uses an older scheme, built for
+firmware whose data interface has a 4097-byte output report (`0x1001`):
+
+```
+feature  04 18                         start
+feature  04 72 <slot=1> 00×5 <n lo> <n hi>   announce n × 4096-byte chunks
+output   n × 4096 bytes (+ read ack, 300 ms)
+feature  04 02                         end / commit
+```
+
+(10 ms between feature reports; each is followed by a get-feature read.) On 1.16 the keyboard echoes all
+three feature commands, and **`04 72` erases the saved slot**, after which power-up shows the clock.
+The data never lands: 4096-byte chunks, raw 4104-byte chunks and `0x50`-framed chunks inside the bracket
+were all tried, and only the `0x50` ones are acknowledged (and they are still not saved).
+**Don't send `04 72` to a 1.16 keyboard** unless you are happy to lose its saved animation.
+
+Over the 2.4 GHz dongle (`0C45:FEFE`, interface `FF60`, 32-byte reports) the keyboard answers
+`GET_DEVICE_INFO` (`workMode` 2) and acknowledges `0x50` chunks with a `55 50 …` echo, but the screen
+doesn't change.

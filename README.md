@@ -21,13 +21,17 @@ web driver. See [PROTOCOL.md](PROTOCOL.md).
 
 > The screen is only reachable over the **USB-C cable with the keyboard in wired mode**.
 > The 2.4 GHz dongle and Bluetooth can't do it.
+>
+> **Uploads are temporary on firmware 1.16.** The picture stays while the keyboard is wired and plugged in;
+> unplugging or switching to wireless brings back the built-in screen. The official AJAZZ web and Windows
+> tools behave the same way. See [PROTOCOL.md](PROTOCOL.md#persistence) for everything that was tried.
 
 ## Linux setup (once)
 
 Browsers and the CLI need permission to open the keyboard:
 
 ```sh
-sudo cp 99-ak820.rules /etc/udev/rules.d/ && sudo udevadm control --reload && sudo udevadm trigger
+sudo cp 70-ak820.rules /etc/udev/rules.d/ && sudo udevadm control --reload && sudo udevadm trigger
 ```
 then unplug and replug the keyboard. macOS and Windows need nothing.
 

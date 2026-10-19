@@ -1,0 +1,6 @@
+# AJAZZ / Epomaker AK820 Pro — let the logged-in user (CLI + Chrome WebHID) open its hidraw nodes.
+# Must sort before systemd's 73-seat-late.rules, or the uaccess tag is applied too late.
+KERNEL=="hidraw*", ATTRS{idVendor}=="0c45", ATTRS{idProduct}=="800a", TAG+="uaccess"
+KERNEL=="hidraw*", ATTRS{idVendor}=="0c45", ATTRS{idProduct}=="8009", TAG+="uaccess"
+# 2.4 GHz dongle
+KERNEL=="hidraw*", ATTRS{idVendor}=="0c45", ATTRS{idProduct}=="fefe", TAG+="uaccess"
