@@ -13,6 +13,9 @@ PIDS = {0x800A, 0x8009}
 CONFIG_PAGES = {0xFF68, 0xFF80, 0xFF60, 0xFF00, 0xFF01, 0xFF1B}
 BULK_PAGE = 0xFF67
 W = H = 128
+HIST_DIR = os.path.join(os.environ.get("XDG_DATA_HOME") or os.path.expanduser("~/.local/share"),
+                        "ak820", "history")
+HIST_MAX = 50
 
 CMD_GET_DEVICE_INFO = 0x10
 CMD_TEMP_DATA = 0x34
@@ -242,7 +245,81 @@ def cmd_upload(a):
     payload = build_payload(frames)
     print(f"  {len(frames)} frame(s), {len(payload)} bytes", file=sys.stderr)
     upload(bulk, payload, bulk.report_len)
+    save_history(payload, os.path.basename(a.image))
     print("done")
+
+
+# --- history ------------------------------------------------------------------
+
+def save_history(payload, name):
+    os.makedirs(HIST_DIR, exist_ok=True)
+    safe = "".join(c if c.isalnum() or c in "._-" else "_" for c in name)[:60]
+    with open(os.path.join(HIST_DIR, f"{datetime.datetime.now():%Y%m%d-%H%M%S}_{safe}.bin"), "wb") as f:
+        f.write(payload)
+    for old in history_files()[HIST_MAX:]:
+        os.remove(old)
+
+
+def history_files():
+    try:
+        names = [n for n in os.listdir(HIST_DIR) if n.endswith(".bin")]
+    except FileNotFoundError:
+        return []
+    return [os.path.join(HIST_DIR, n) for n in sorted(names, reverse=True)]
+
+
+def parse_payload(payload):
+    """Inverse of build_payload → [(PIL.Image, delay_ms)]."""
+    from PIL import Image
+    n = payload[0]
+    frames = []
+    for k in range(n):
+        raw = payload[256 + k * W * H * 2:256 + (k + 1) * W * H * 2]
+        rgb = bytearray(W * H * 3)
+        for j in range(W * H):
+            v = raw[2 * j] | raw[2 * j + 1] << 8
+            rgb[3 * j] = (v >> 11) * 255 // 31
+            rgb[3 * j + 1] = (v >> 5 & 63) * 255 // 63
+            rgb[3 * j + 2] = (v & 31) * 255 // 31
+        delay = payload[k + 1] if k < n - 1 else payload[n - 1]
+        frames.append((Image.frombytes("RGB", (W, H), bytes(rgb)), 500 if n == 1 else delay * 2))
+    return frames
+
+
+def pick_history(n):
+    files = history_files()
+    if not 1 <= n <= len(files):
+        sys.exit(f"no history entry {n} (have {len(files)}; see `ak820.py history`)")
+    return files[n - 1]
+
+
+def cmd_history(a):
+    files = history_files()
+    if a.action == "list":
+        if not files:
+            print(f"no history yet ({HIST_DIR})")
+        for i, f in enumerate(files, 1):
+            stamp, _, name = os.path.basename(f)[:-4].partition("_")
+            with open(f, "rb") as fh:
+                frames = fh.read(1)[0]
+            when = datetime.datetime.strptime(stamp, "%Y%m%d-%H%M%S")
+            tag = "  ← on keyboard (if nothing else sent since)" if i == 1 else ""
+            print(f"{i:3d}  {when:%Y-%m-%d %H:%M}  {frames:3d} fr  {name}{tag}")
+        return
+    path = pick_history(a.n)
+    payload = open(path, "rb").read()
+    if a.action == "export":
+        frames = parse_payload(payload)
+        out = a.out or os.path.basename(path)[:-4] + ".gif"
+        scale = a.scale
+        imgs = [f.resize((W * scale, H * scale), 0) for f, _ in frames]
+        imgs[0].save(out, save_all=True, append_images=imgs[1:], duration=[d for _, d in frames], loop=0)
+        print(f"saved {out}")
+    elif a.action == "restore":
+        _, bulk = open_ifaces(need_bulk=True)
+        upload(bulk, payload, bulk.report_len)
+        save_history(payload, os.path.basename(path)[16:-4] or "restored")
+        print("done")
 
 
 def cmd_builtin(a):
@@ -339,6 +416,13 @@ def main():
     st.add_argument("--interval", type=float, default=1.0)
     st.add_argument("-v", "--verbose", action="store_true")
     st.set_defaults(fn=cmd_stats)
+
+    hi = s.add_parser("history", help="list / export / restore previous uploads")
+    hi.add_argument("action", nargs="?", choices=["list", "export", "restore"], default="list")
+    hi.add_argument("n", nargs="?", type=int, default=1, help="entry number from `history` (1 = newest)")
+    hi.add_argument("-o", "--out", help="export: output GIF path")
+    hi.add_argument("--scale", type=int, default=2, help="export: pixel scale (default 2)")
+    hi.set_defaults(fn=cmd_history)
 
     r = s.add_parser("raw", help="send a raw command (debug)")
     r.add_argument("cmd")

@@ -10,6 +10,7 @@ with no vendor driver, on Linux, macOS or Windows.
 - Fill / fit / stretch, zoom, pan, rotate, mirror, brightness, contrast, saturation
 - Change speed, trim frames, drop every Nth frame to fit the keyboard's ~140-frame limit
 - Sync the screen clock, switch to built-in animations
+- **History**: every send is saved in your browser, so you can see what's on the keyboard, what was there before, and put it back
 
 Unofficial; not affiliated with AJAZZ or Epomaker. The protocol was recovered from the vendor's own
 web driver. See [PROTOCOL.md](PROTOCOL.md).
@@ -38,8 +39,14 @@ Python 3 + Pillow. Also handy for scripting (e.g. a live CPU/GPU monitor).
 ./ak820.py time                       # sync clock
 ./ak820.py builtin 0                  # vendor built-in animation
 ./ak820.py stats -v                   # push CPU/GPU %/°C (if the firmware shows it)
+./ak820.py history                    # list everything you've sent (1 = newest)
+./ak820.py history export 2 -o old.gif  # turn a past upload back into a GIF
+./ak820.py history restore 2          # put it back on the keyboard
 ./ak820.py raw 0x10 --size 48         # debug: send any command
 ```
+
+The keyboard can't send its picture back (no such command exists), so both the site and the CLI
+keep their own copy of each upload: the site in browser storage, the CLI in `~/.local/share/ak820/history/`.
 
 ## Run the site locally
 

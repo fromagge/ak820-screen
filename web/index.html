@@ -97,6 +97,19 @@ details p, details ol { color: var(--muted); margin: 8px 0; }
 pre { background: var(--field); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; overflow-x: auto; margin: 8px 0; }
 .banner { background: color-mix(in srgb, var(--warn) 14%, var(--panel)); border: 1px solid color-mix(in srgb, var(--warn) 40%, var(--line)); border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; }
 footer { color: var(--faint); font-size: 13px; padding: 28px 0 40px; }
+.hint { color: var(--muted); font-size: 13px; margin: -6px 0 14px; }
+.hist { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 12px; }
+.hitem { position: relative; background: var(--field); border: 1px solid var(--line); border-radius: 10px; padding: 6px; cursor: pointer; text-align: left; display: grid; gap: 5px; font: inherit; color: inherit; }
+.hitem:hover { border-color: var(--faint); }
+.hitem.sel { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.hitem img { width: 100%; aspect-ratio: 1; image-rendering: pixelated; border-radius: 4px; background: #000; display: block; }
+.hitem .cap { font-size: 12px; color: var(--muted); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hitem .cap b { color: var(--ink); font-weight: 600; }
+.hitem .badge { position: absolute; top: 10px; left: 10px; background: var(--accent); color: var(--accent-ink); font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 999px; }
+.hitem .del { position: absolute; top: 9px; right: 9px; padding: 0 7px; font-size: 13px; line-height: 20px; border-radius: 6px; background: rgb(0 0 0 / .65); color: #fff; border: 0; opacity: 0; }
+.hitem:hover .del, .hitem:focus-within .del { opacity: 1; }
+@media (hover: none) { .hitem .del { opacity: 1; } }
+.empty { color: var(--faint); font-size: 13px; }
 [hidden] { display: none !important; }
 </style>
 </head>
@@ -208,6 +221,12 @@ footer { color: var(--faint); font-size: 13px; padding: 28px 0 40px; }
         </div>
       </section>
 
+      <section class="panel" id="histpanel">
+        <div class="row" style="justify-content:space-between;margin-bottom:14px"><h2 style="margin:0">History</h2><button class="reset" id="histclear" hidden>Clear all</button></div>
+        <p class="hint">Everything you send from this browser is saved here, so you can see what's on the keyboard, what was there before, and put any of it back.</p>
+        <div id="hist" class="hist"></div>
+      </section>
+
       <section class="panel">
         <h2>Help</h2>
         <details>
@@ -230,6 +249,10 @@ sudo udevadm control --reload && sudo udevadm trigger</code></pre>
           <p>The screen is 128 × 128 pixels with 16-bit colour. The keyboard stores up to about 140 frames (it reports its exact limit after you connect). Sending is roughly 30 KB/s, so a full 140-frame animation takes about 2½ minutes. Keep the cable plugged in until it finishes.</p>
         </details>
         <details>
+          <summary>Can I see what's on my keyboard right now?</summary>
+          <p>Only if you sent it from here. The keyboard has no way to send its picture back, so this page keeps its own copy of everything you send (History, above). History is stored in this browser only. Clearing site data or switching browsers starts it empty. Anything you sent with the official driver isn't in it.</p>
+        </details>
+        <details>
           <summary>Is this safe?</summary>
           <p>This page only uses the same commands as the official driver to set the screen picture and clock. It never touches firmware. Everything happens in your browser, and your files never leave your computer.</p>
         </details>
@@ -241,7 +264,7 @@ sudo udevadm control --reload && sudo udevadm trigger</code></pre>
 </div>
 
 <script type="module">
-import { Keyboard, supported, W, H, payloadBytes } from './ak820.js';
+import { Keyboard, supported, W, H, payloadBytes, parsePayload } from './ak820.js';
 
 const $ = (id) => document.getElementById(id);
 const BYTES_PER_SEC = 30000;
@@ -254,6 +277,7 @@ let output = [];   // [{ data: ImageData, delay }]
 let mode = 'file';
 let uploading = null;
 let mirror = false;
+let currentName = '';
 
 // --- UI helpers ---------------------------------------------------------------
 function pill(text, cls = '') { $('pilltext').textContent = text; $('pill').className = 'pill ' + cls; }
@@ -290,6 +314,7 @@ $('reset').onclick = () => {
     $(id).value = v; $(id).dispatchEvent(new Event('input'));
   }
   $('tstart').value = 0; $('tend').value = $('tend').max; mirror = false; $('bg').value = '#000000';
+  $('tstart').dispatchEvent(new Event('input')); $('tend').dispatchEvent(new Event('input'));
   for (const [name, v] of [['fit', 'cover'], ['rot', '0']])
     document.querySelectorAll(`.seg[data-name="${name}"] button`).forEach((b) => b.setAttribute('aria-pressed', b.dataset.v === v));
   schedule('render');
@@ -356,6 +381,7 @@ async function decodeVideo(file) {
 let lastFile = null;
 async function loadFile(file) {
   lastFile = file;
+  currentName = file.name;
   const isVideo = file.type.startsWith('video/');
   $('fpsctl').hidden = !isVideo;
   msg('Decoding…');
@@ -376,6 +402,7 @@ async function loadFile(file) {
 function makeText() {
   const text = $('txt').value || ' ', size = +$('tsize').value, font = `700 ${size}px ${$('tfont').value}`;
   const style = segValue('tmode'), fg = $('tfg').value, bgc = $('tbg').value;
+  currentName = `“${text.trim()}”`;
   const c = new OffscreenCanvas(W, H), ctx = c.getContext('2d');
   ctx.font = font;
   const tw = Math.ceil(ctx.measureText(text).width);
@@ -536,7 +563,7 @@ $('upload').onclick = async () => {
   pill('Sending…', 'busy');
   const t0 = performance.now();
   try {
-    await kb.upload(frames, {
+    const payload = await kb.upload(frames, {
       signal: uploading.signal,
       onProgress: (p) => {
         $('prog').value = p;
@@ -545,6 +572,7 @@ $('upload').onclick = async () => {
       },
     });
     msg(`Done. ${frames.length} frame${frames.length > 1 ? 's' : ''} on your keyboard.`, 'ok');
+    await saveHistory(payload, currentName || 'Image');
   } catch (e) {
     msg(e.message === 'cancelled' ? 'Cancelled. The screen may show a partial image until you send again.' : `Send failed: ${e.message}. Check the cable and try again.`, 'err');
   }
@@ -561,6 +589,100 @@ $('synctime').onclick = async () => {
 $('setbuiltin').onclick = async () => {
   try { await kb.showBuiltIn(+$('builtin').value); msg('Built-in animation selected.', 'ok'); } catch (e) { msg(e.message, 'err'); }
 };
+
+// --- history (IndexedDB, this browser only) ----------------------------------------
+const HISTORY_MAX = 30;
+const dbp = new Promise((res, rej) => {
+  const r = indexedDB.open('ak820', 1);
+  r.onupgradeneeded = () => r.result.createObjectStore('history', { keyPath: 'id', autoIncrement: true });
+  r.onsuccess = () => res(r.result);
+  r.onerror = () => rej(r.error);
+});
+async function store(mode, fn) {
+  const db = await dbp;
+  return new Promise((res, rej) => {
+    const tx = db.transaction('history', mode), req = fn(tx.objectStore('history'));
+    tx.oncomplete = () => res(req?.result);
+    tx.onerror = () => rej(tx.error);
+  });
+}
+
+function thumb(imageData) {
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  c.getContext('2d').putImageData(imageData, 0, 0);
+  return c.toDataURL('image/png');
+}
+
+async function saveHistory(payload, name) {
+  try {
+    const [first] = parsePayload(payload, 1);
+    await store('readwrite', (s) => s.add({ date: Date.now(), name, frames: payload[0], payload, thumb: thumb(first.data) }));
+    const keys = await store('readonly', (s) => s.getAllKeys());
+    if (keys.length > HISTORY_MAX) await store('readwrite', (s) => { for (const k of keys.slice(0, keys.length - HISTORY_MAX)) s.delete(k); });
+    selected = null;
+    renderHistory();
+  } catch (e) { console.warn('history not saved', e); }
+}
+
+let selected = null;
+const when = (t) => {
+  const d = new Date(t), today = new Date().toDateString() === d.toDateString();
+  return today ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+};
+
+async function renderHistory() {
+  let items = [];
+  try { items = (await store('readonly', (s) => s.getAll())).sort((a, b) => b.id - a.id); }
+  catch { $('histpanel').hidden = true; return; }
+  const box = $('hist');
+  box.replaceChildren();
+  $('histclear').hidden = !items.length;
+  if (!items.length) {
+    const p = document.createElement('p'); p.className = 'empty';
+    p.textContent = 'Nothing sent yet. Your first upload will show up here.';
+    box.append(p); return;
+  }
+  items.forEach((it, i) => {
+    const b = document.createElement('button');
+    b.className = 'hitem' + (selected === it.id ? ' sel' : '');
+    b.title = `Load "${it.name}" (sent ${new Date(it.date).toLocaleString()})`;
+    const img = document.createElement('img'); img.src = it.thumb; img.alt = '';
+    const cap = document.createElement('span'); cap.className = 'cap';
+    const nm = document.createElement('b'); nm.textContent = it.name;
+    cap.append(nm, document.createElement('br'), `${when(it.date)} · ${it.frames} fr`);
+    b.append(img, cap);
+    if (i === 0) { const badge = document.createElement('span'); badge.className = 'badge'; badge.textContent = 'Now'; badge.title = 'Last thing sent from this browser'; b.append(badge); }
+    const del = document.createElement('span'); del.className = 'del'; del.textContent = '✕'; del.title = 'Delete';
+    del.setAttribute('role', 'button'); del.setAttribute('aria-label', `Delete ${it.name}`);
+    del.onclick = async (e) => { e.stopPropagation(); await store('readwrite', (s) => s.delete(it.id)); renderHistory(); };
+    b.append(del);
+    b.onclick = () => loadHistory(it);
+    box.append(b);
+  });
+}
+
+async function loadHistory(it) {
+  const frames = parsePayload(it.payload);
+  source.forEach((f) => f.bmp.close?.());
+  source = await Promise.all(frames.map(async (f) => ({ bmp: await createImageBitmap(f.data), delay: f.delay })));
+  mode = 'file'; lastFile = null; currentName = it.name; selected = it.id;
+  document.querySelectorAll('[role=tab]').forEach((x) => x.setAttribute('aria-selected', x.dataset.tab === 'file'));
+  $('tab-file').hidden = false; $('tab-text').hidden = true; $('fpsctl').hidden = true;
+  $('tstart').max = $('tend').max = source.length - 1;
+  $('reset').click();
+  renderHistory();
+  msg(`Showing "${it.name}", sent ${new Date(it.date).toLocaleString()}. Press Send to put it back.`);
+  if (innerWidth < 820) $('preview').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+$('histclear').onclick = async () => {
+  if (!confirm('Delete all saved history from this browser?')) return;
+  await store('readwrite', (s) => s.clear());
+  renderHistory();
+};
+
+renderHistory();
 
 // Start with a friendly default so the preview isn't empty.
 render();

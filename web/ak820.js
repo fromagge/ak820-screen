@@ -123,6 +123,7 @@ export class Keyboard {
       await transact(this.bulk, pkt, CMD.ANIM_ACK, 2000, 3);
       onProgress?.((idx + 1) / total);
     }
+    return payload;
   }
 }
 
@@ -143,6 +144,25 @@ export function buildPayload(frames) {
     }
   }
   return out;
+}
+
+// Inverse of buildPayload: what was sent → [{ data: ImageData, delay }].
+export function parsePayload(payload, limit = Infinity) {
+  const n = payload[0], frames = [];
+  for (let k = 0; k < Math.min(n, limit); k++) {
+    const img = new ImageData(W, H), d = img.data;
+    let j = 256 + k * W * H * 2;
+    for (let p = 0; p < d.length; p += 4, j += 2) {
+      const v = payload[j] | (payload[j + 1] << 8);
+      d[p] = ((v >> 11) & 31) * 255 / 31;
+      d[p + 1] = ((v >> 5) & 63) * 255 / 63;
+      d[p + 2] = (v & 31) * 255 / 31;
+      d[p + 3] = 255;
+    }
+    const raw = k < n - 1 ? payload[k + 1] : payload[n - 1] || 50; // last frame's delay isn't stored
+    frames.push({ data: img, delay: n === 1 ? 500 : raw * 2 });
+  }
+  return frames;
 }
 
 // Bytes on the wire per upload, for time estimates.
