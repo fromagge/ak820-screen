@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AK820 Screen Studio</title>
-<meta name="description" content="Put any GIF, image, video or text on the AJAZZ / Epomaker AK820 Pro keyboard screen, right from your browser. No driver, no install.">
+<meta name="description" content="Put GIFs, images, video, text, rainbow animations and drawings on the AJAZZ / Epomaker AK820 Pro keyboard screen, right from your browser. No driver, no install.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect x='3' y='6' width='26' height='20' rx='4' fill='%23ff6a2b'/><rect x='8' y='11' width='16' height='10' rx='1.5' fill='%23111'/></svg>">
 <style>
 :root {
@@ -109,8 +109,28 @@ footer { color: var(--faint); font-size: 13px; padding: 28px 0 40px; }
 .hitem .del { position: absolute; top: 9px; right: 9px; padding: 0 7px; font-size: 13px; line-height: 20px; border-radius: 6px; background: rgb(0 0 0 / .65); color: #fff; border: 0; opacity: 0; }
 .hitem:hover .del, .hitem:focus-within .del { opacity: 1; }
 @media (hover: none) { .hitem .del { opacity: 1; } }
-.empty { color: var(--faint); font-size: 13px; }
+.empty { color: var(--faint); font-size: 13px; grid-column: 1 / -1; margin: 0; }
 [hidden] { display: none !important; }
+
+textarea { font: inherit; color: var(--ink); background: var(--field); border: 1px solid var(--line); border-radius: 8px; padding: 7px 12px; resize: vertical; width: 100%; }
+.tabs { overflow-x: auto; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border-radius: 999px; padding: 5px 12px; font-size: 13px; }
+.chip[aria-pressed=true] { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--field)); font-weight: 600; }
+.rb { background: linear-gradient(90deg, #ff3b3b, #ff9f1c, #ffe11c, #3ddc4a, #1cb0ff, #8a4dff, #ff3bd4); -webkit-background-clip: text; background-clip: text; color: transparent; font-weight: 700; }
+.fxgroup { display: grid; grid-template-columns: 82px 1fr; gap: 10px; align-items: start; margin-bottom: 12px; }
+@media (max-width: 520px) { .fxgroup { grid-template-columns: 1fr; gap: 6px; } }
+.glabel { font-size: 13px; color: var(--muted); padding-top: 5px; }
+.gens { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 10px; }
+.gen { padding: 5px; display: grid; gap: 4px; font-size: 12px; text-align: center; border-radius: 10px; }
+.gen canvas { width: 100%; aspect-ratio: 1; image-rendering: pixelated; border-radius: 5px; background: #000; display: block; }
+.gen[aria-pressed=true] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); font-weight: 600; }
+.drawlayout { display: grid; grid-template-columns: minmax(0, 384px) 1fr; gap: 18px; align-items: start; }
+@media (max-width: 640px) { .drawlayout { grid-template-columns: 1fr; } }
+#draw { width: 100%; aspect-ratio: 1; image-rendering: pixelated; touch-action: none; cursor: crosshair; background: #000; border-radius: 8px; display: block; border: 1px solid var(--line); }
+.tools { display: grid; gap: 12px; }
+.spaced { justify-content: space-between; margin-bottom: 14px; }
+.spaced h2 { margin: 0; }
 </style>
 </head>
 <body>
@@ -118,7 +138,7 @@ footer { color: var(--faint); font-size: 13px; padding: 28px 0 40px; }
   <header>
     <div class="brand">
       <h1>AK820 Screen Studio</h1>
-      <p>Put any GIF, image, video or text on the AK820 Pro's screen. No driver, no install.</p>
+      <p>Put GIFs, video, text, <span class="rb">rainbows</span> and drawings on the AK820 Pro's screen. No driver, no install.</p>
     </div>
     <div class="conn">
       <span id="pill" class="pill"><span class="dot"></span><span id="pilltext">Not connected</span></span>
@@ -127,7 +147,7 @@ footer { color: var(--faint); font-size: 13px; padding: 28px 0 40px; }
   </header>
 
   <div id="nohid" class="banner" hidden>
-    Your browser doesn't support WebHID. Open this page in <strong>Chrome</strong>, <strong>Edge</strong>, <strong>Brave</strong> or <strong>Opera</strong> on a desktop computer.
+    Your browser doesn't support WebHID. Open this page in <strong>Chrome</strong>, <strong>Edge</strong>, <strong>Brave</strong> or <strong>Opera</strong> on a desktop computer. You can still design here, but you can't send.
   </div>
 
   <div class="grid">
@@ -147,7 +167,7 @@ footer { color: var(--faint); font-size: 13px; padding: 28px 0 40px; }
         <div id="devinfo" class="meta" style="margin:0 0 12px"></div>
         <div class="row">
           <button id="synctime">Sync clock</button>
-          <select id="builtin" aria-label="Built-in animation">
+          <select id="builtin" aria-label="Built-in animation" data-on="none">
             <option value="0">Built-in 1</option><option value="1">Built-in 2</option><option value="2">Built-in 3</option>
           </select>
           <button id="setbuiltin">Show</button>
@@ -158,11 +178,22 @@ footer { color: var(--faint); font-size: 13px; padding: 28px 0 40px; }
     <main>
       <section class="panel">
         <div class="tabs" role="tablist">
-          <button role="tab" aria-selected="true" data-tab="file">Image / GIF / Video</button>
+          <button role="tab" aria-selected="true" data-tab="anim">Animations</button>
+          <button role="tab" aria-selected="false" data-tab="file">Image / Video</button>
           <button role="tab" aria-selected="false" data-tab="text">Text</button>
+          <button role="tab" aria-selected="false" data-tab="draw">Draw</button>
         </div>
 
-        <div id="tab-file">
+        <div id="tab-anim">
+          <div id="gens" class="gens"></div>
+          <div id="genparams" class="controls" style="margin-top:16px"></div>
+          <div class="controls" style="margin-top:14px">
+            <div class="ctl"><label for="gframes">Smoothness <output id="gframes-o"></output></label><input id="gframes" type="range" min="12" max="96" step="4" value="36" data-on="anim"></div>
+            <div class="ctl"><label>&nbsp;</label><div class="row"><button id="shuffle">Shuffle</button><button id="surprise">🎲 Surprise me</button></div></div>
+          </div>
+        </div>
+
+        <div id="tab-file" hidden>
           <div id="drop" class="drop" tabindex="0">
             <strong>Drop a file here, paste, or click to choose</strong>
             GIF, PNG, JPG, WebP, APNG, MP4, WebM
@@ -172,26 +203,99 @@ footer { color: var(--faint); font-size: 13px; padding: 28px 0 40px; }
 
         <div id="tab-text" hidden>
           <div class="controls">
-            <div class="ctl full"><label for="txt">Text</label><input id="txt" type="text" value="HELLO" maxlength="200"></div>
-            <div class="ctl"><label>Style</label>
-              <div class="seg" data-name="tmode">
+            <div class="ctl full"><label for="txt">Text <span>new line = Enter</span></label><textarea id="txt" rows="2" maxlength="200" data-on="text">HELLO</textarea></div>
+            <div class="ctl full"><label>Style</label>
+              <div class="seg" data-name="tmode" data-on="text">
                 <button aria-pressed="true" data-v="static">Static</button>
                 <button aria-pressed="false" data-v="scroll">Scroll</button>
+                <button aria-pressed="false" data-v="wave">Wave</button>
+                <button aria-pressed="false" data-v="type">Typewriter</button>
                 <button aria-pressed="false" data-v="blink">Blink</button>
               </div>
             </div>
-            <div class="ctl"><label for="tsize">Size <output id="tsize-o"></output></label><input id="tsize" type="range" min="10" max="96" value="36"></div>
-            <div class="ctl"><label>Colours</label>
-              <div class="row"><input id="tfg" type="color" value="#ffffff" aria-label="Text colour"><input id="tbg" type="color" value="#e8590c" aria-label="Background colour">
-              <select id="tfont" aria-label="Font"><option value="system-ui">Sans</option><option value="ui-serif, Georgia, serif">Serif</option><option value="ui-monospace, monospace">Mono</option><option value="Impact, 'Arial Black', sans-serif">Impact</option></select></div>
+            <div class="ctl"><label>Colour</label>
+              <div class="seg" data-name="tcol" data-on="text">
+                <button aria-pressed="true" data-v="solid">Solid</button>
+                <button aria-pressed="false" data-v="rainbow"><span class="rb">Rainbow</span></button>
+              </div>
             </div>
-            <div class="ctl"><label for="tspeed">Scroll speed <output id="tspeed-o"></output></label><input id="tspeed" type="range" min="1" max="8" value="3"></div>
+            <div class="ctl"><label for="tsize">Max size <output id="tsize-o"></output></label><input id="tsize" type="range" min="10" max="96" value="40" data-on="text"></div>
+            <div class="ctl"><label>Text / background</label>
+              <div class="row"><input id="tfg" type="color" value="#ffffff" aria-label="Text colour" data-on="text"><input id="tbg" type="color" value="#e8590c" aria-label="Background colour" data-on="text">
+              <button id="toutline" class="chip" aria-pressed="false" data-on="text">Outline</button></div>
+            </div>
+            <div class="ctl"><label for="tfont">Font</label>
+              <select id="tfont" data-on="text"><option value="system-ui, sans-serif">Sans</option><option value="ui-rounded, 'Arial Rounded MT Bold', system-ui, sans-serif">Rounded</option><option value="ui-serif, Georgia, serif">Serif</option><option value="ui-monospace, monospace">Mono</option><option value="Impact, 'Arial Black', sans-serif">Impact</option><option value="'Comic Sans MS', 'Comic Neue', cursive">Comic</option></select>
+            </div>
+            <div class="ctl"><label for="tspeed">Speed <output id="tspeed-o"></output></label><input id="tspeed" type="range" min="1" max="8" value="3" data-on="text"></div>
+          </div>
+        </div>
+
+        <div id="tab-draw" hidden>
+          <div class="drawlayout">
+            <canvas id="draw" width="128" height="128" aria-label="Drawing canvas"></canvas>
+            <div class="tools">
+              <div class="ctl"><label>Tool</label>
+                <div class="seg" data-name="tool" data-on="none">
+                  <button aria-pressed="true" data-v="brush">Brush</button>
+                  <button aria-pressed="false" data-v="erase">Eraser</button>
+                </div>
+              </div>
+              <div class="ctl"><label for="bsize">Brush size <output id="bsize-o"></output></label><input id="bsize" type="range" min="1" max="24" value="4" data-on="none"></div>
+              <div class="ctl"><label>Colour</label>
+                <div class="row"><input id="bcolor" type="color" value="#ffffff" data-on="none" aria-label="Brush colour"><button id="brainbow" class="chip" aria-pressed="false" data-on="none"><span class="rb">Rainbow brush</span></button></div>
+              </div>
+              <div class="ctl"><label>Background</label>
+                <div class="row"><input id="dbg" type="color" value="#000000" data-on="none" aria-label="Canvas background"><button id="dclear">Clear</button></div>
+              </div>
+              <div class="row"><button id="dundo">Undo</button><button id="dtrace">Start from last image</button></div>
+            </div>
           </div>
         </div>
       </section>
 
+      <section class="panel" id="fxpanel">
+        <div class="row spaced"><h2>Effects</h2><div class="row"><button class="reset" id="fxrandom">🎲 Random</button><button class="reset" id="fxclear">Clear</button></div></div>
+        <div class="fxgroup"><span class="glabel rb">Rainbow</span><div class="chips">
+          <button class="chip" aria-pressed="false" data-fx="cycle">Colour cycle</button>
+          <button class="chip" aria-pressed="false" data-fx="wash">Rainbow wash</button>
+          <button class="chip" aria-pressed="false" data-fx="border">Rainbow border</button>
+          <button class="chip" aria-pressed="false" data-fx="capRainbow">Rainbow caption</button>
+        </div></div>
+        <div class="fxgroup"><span class="glabel">Motion</span><div class="chips">
+          <button class="chip" aria-pressed="false" data-fx="spin">Spin</button>
+          <button class="chip" aria-pressed="false" data-fx="shake">Shake</button>
+          <button class="chip" aria-pressed="false" data-fx="breathe">Zoom pulse</button>
+          <button class="chip" aria-pressed="false" data-fx="pulse">Glow pulse</button>
+          <button class="chip" aria-pressed="false" data-fx="glitch">Glitch</button>
+          <button class="chip" aria-pressed="false" data-fx="sparkle">Sparkles</button>
+        </div></div>
+        <div class="fxgroup"><span class="glabel">Look</span><div class="chips">
+          <button class="chip" aria-pressed="false" data-fx="scan">CRT lines</button>
+          <button class="chip" aria-pressed="false" data-fx="vignette">Vignette</button>
+          <button class="chip" aria-pressed="false" data-fx="posterize">Poster</button>
+          <button class="chip" aria-pressed="false" data-fx="gray">Black &amp; white</button>
+          <button class="chip" aria-pressed="false" data-fx="sepia">Sepia</button>
+          <button class="chip" aria-pressed="false" data-fx="invert">Invert</button>
+        </div></div>
+        <div class="controls" style="margin-top:4px">
+          <div class="ctl"><label for="fxhue">Hue shift <output id="fxhue-o"></output></label><input id="fxhue" type="range" min="0" max="355" step="5" value="0"></div>
+          <div class="ctl"><label for="fxpixel">Pixelate <output id="fxpixel-o"></output></label><input id="fxpixel" type="range" min="1" max="16" value="1"></div>
+          <div class="ctl full"><label for="fxcap">Caption</label><input id="fxcap" type="text" placeholder="Optional text on top of anything" maxlength="60"></div>
+          <div class="ctl"><label>Caption position</label>
+            <div class="seg" data-name="cappos">
+              <button aria-pressed="false" data-v="top">Top</button>
+              <button aria-pressed="false" data-v="middle">Middle</button>
+              <button aria-pressed="true" data-v="bottom">Bottom</button>
+            </div>
+          </div>
+          <div class="ctl"><label for="fxcapcolor">Caption colour</label><input id="fxcapcolor" type="color" value="#ffffff"></div>
+          <div class="ctl full"><label for="fxloop">Loop length for still images <output id="fxloop-o"></output></label><input id="fxloop" type="range" min="8" max="72" step="4" value="24"></div>
+        </div>
+      </section>
+
       <section class="panel" id="adjust">
-        <div class="row" style="justify-content:space-between;margin-bottom:14px"><h2 style="margin:0">Adjust</h2><button class="reset" id="reset">Reset</button></div>
+        <div class="row spaced"><h2>Adjust</h2><button class="reset" id="reset">Reset</button></div>
         <div class="controls">
           <div class="ctl"><label>Fit</label>
             <div class="seg" data-name="fit">
@@ -207,22 +311,22 @@ footer { color: var(--faint); font-size: 13px; padding: 28px 0 40px; }
             </div>
           </div>
           <div class="ctl"><label for="zoom">Zoom <output id="zoom-o"></output></label><input id="zoom" type="range" min="100" max="400" value="100"></div>
-          <div class="ctl"><label for="bg">Background</label><div class="row"><input id="bg" type="color" value="#000000"><button class="reset" id="flip">Mirror</button></div></div>
+          <div class="ctl"><label for="bg">Background</label><div class="row"><input id="bg" type="color" value="#000000"><button class="chip" id="flip" aria-pressed="false">Mirror</button></div></div>
           <div class="ctl"><label for="panx">Pan left / right <output id="panx-o"></output></label><input id="panx" type="range" min="-100" max="100" value="0"></div>
           <div class="ctl"><label for="pany">Pan up / down <output id="pany-o"></output></label><input id="pany" type="range" min="-100" max="100" value="0"></div>
           <div class="ctl"><label for="bri">Brightness <output id="bri-o"></output></label><input id="bri" type="range" min="20" max="200" value="100"></div>
           <div class="ctl"><label for="con">Contrast <output id="con-o"></output></label><input id="con" type="range" min="20" max="200" value="100"></div>
           <div class="ctl"><label for="sat">Saturation <output id="sat-o"></output></label><input id="sat" type="range" min="0" max="250" value="100"></div>
           <div class="ctl"><label for="speed">Speed <output id="speed-o"></output></label><input id="speed" type="range" min="-3" max="3" step="1" value="0"></div>
-          <div class="ctl" id="trimctl"><label for="tstart">First frame <output id="tstart-o"></output></label><input id="tstart" type="range" min="0" max="0" value="0"></div>
-          <div class="ctl" id="trimctl2"><label for="tend">Last frame <output id="tend-o"></output></label><input id="tend" type="range" min="0" max="0" value="0"></div>
-          <div class="ctl" id="skipctl"><label for="skip">Keep <output id="skip-o"></output></label><input id="skip" type="range" min="1" max="6" value="1"></div>
-          <div class="ctl" id="fpsctl" hidden><label for="vfps">Video frame rate <output id="vfps-o"></output></label><input id="vfps" type="range" min="2" max="25" value="12"></div>
+          <div class="ctl trim"><label for="tstart">First frame <output id="tstart-o"></output></label><input id="tstart" type="range" min="0" max="0" value="0"></div>
+          <div class="ctl trim"><label for="tend">Last frame <output id="tend-o"></output></label><input id="tend" type="range" min="0" max="0" value="0"></div>
+          <div class="ctl trim"><label for="skip">Keep <output id="skip-o"></output></label><input id="skip" type="range" min="1" max="6" value="1"></div>
+          <div class="ctl" id="fpsctl" hidden><label for="vfps">Video frame rate <output id="vfps-o"></output></label><input id="vfps" type="range" min="2" max="25" value="12" data-on="video"></div>
         </div>
       </section>
 
       <section class="panel" id="histpanel">
-        <div class="row" style="justify-content:space-between;margin-bottom:14px"><h2 style="margin:0">History</h2><button class="reset" id="histclear" hidden>Clear all</button></div>
+        <div class="row spaced"><h2>History</h2><button class="reset" id="histclear" hidden>Clear all</button></div>
         <p class="hint">Everything you send from this browser is saved here, so you can see what's on the keyboard, what was there before, and put any of it back.</p>
         <div id="hist" class="hist"></div>
       </section>
@@ -246,7 +350,7 @@ sudo udevadm control --reload && sudo udevadm trigger</code></pre>
         </details>
         <details>
           <summary>Limits</summary>
-          <p>The screen is 128 × 128 pixels with 16-bit colour. The keyboard stores up to about 140 frames (it reports its exact limit after you connect). Sending is roughly 30 KB/s, so a full 140-frame animation takes about 2½ minutes. Keep the cable plugged in until it finishes.</p>
+          <p>The screen is 128 × 128 pixels with 16-bit colour. The keyboard stores up to about 140 frames (it reports its exact limit after you connect). Sending is roughly 30 KB/s, so a full 140-frame animation takes about 2½ minutes. Keep the cable plugged in until it finishes. Effects on a still image make a short loop (24 frames by default), which sends in under a minute.</p>
         </details>
         <details>
           <summary>Can I see what's on my keyboard right now?</summary>
@@ -260,432 +364,9 @@ sudo udevadm control --reload && sudo udevadm trigger</code></pre>
     </main>
   </div>
 
-  <footer>Unofficial tool, not affiliated with AJAZZ or Epomaker. Works with AK820 Pro (USB 0C45:800A / 8009).</footer>
+  <footer>Unofficial tool, not affiliated with AJAZZ or Epomaker. Works with AK820 Pro (USB 0C45:800A / 8009). <a href="https://github.com/fromagge/ak820-screen">Source on GitHub</a>.</footer>
 </div>
 
-<script type="module">
-import { Keyboard, supported, W, H, payloadBytes, parsePayload } from './ak820.js';
-
-const $ = (id) => document.getElementById(id);
-const BYTES_PER_SEC = 30000;
-const MAX_SOURCE = 512;      // downscale decoded frames to bound memory
-const HARD_MAX_FRAMES = 255; // header byte limit
-
-let kb = null, maxFrames = 0;
-let source = [];   // [{ bmp: ImageBitmap, delay }]
-let output = [];   // [{ data: ImageData, delay }]
-let mode = 'file';
-let uploading = null;
-let mirror = false;
-let currentName = '';
-
-// --- UI helpers ---------------------------------------------------------------
-function pill(text, cls = '') { $('pilltext').textContent = text; $('pill').className = 'pill ' + cls; }
-function msg(text, cls = '') { $('msg').textContent = text; $('msg').className = 'msg ' + cls; }
-const segValue = (name) => document.querySelector(`.seg[data-name="${name}"] [aria-pressed=true]`).dataset.v;
-document.querySelectorAll('.seg').forEach((seg) => seg.addEventListener('click', (e) => {
-  const b = e.target.closest('button'); if (!b) return;
-  seg.querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', x === b));
-  schedule(seg.dataset.name === 'tmode' ? 'text' : 'render');
-}));
-
-const fmt = {
-  zoom: (v) => v + '%', panx: (v) => v, pany: (v) => v, bri: (v) => v + '%', con: (v) => v + '%', sat: (v) => v + '%',
-  speed: (v) => (v >= 0 ? 2 ** v : 1 / 2 ** -v) + '×', tstart: (v) => +v + 1, tend: (v) => +v + 1,
-  skip: (v) => (v == 1 ? 'all frames' : `1 in ${v}`), vfps: (v) => v + ' fps', tsize: (v) => v + 'px', tspeed: (v) => v,
-};
-for (const id of Object.keys(fmt)) {
-  const el = $(id), out = $(id + '-o');
-  const show = () => out && (out.textContent = fmt[id](el.value));
-  el.addEventListener('input', () => {
-    show();
-    if (id === 'vfps') return;
-    schedule(['tsize', 'tspeed'].includes(id) ? 'text' : 'render');
-  });
-  if (id === 'vfps') el.addEventListener('change', () => lastFile && loadFile(lastFile));
-  show();
-}
-for (const id of ['bg']) $(id).addEventListener('input', () => schedule('render'));
-for (const id of ['txt', 'tfg', 'tbg', 'tfont']) $(id).addEventListener('input', () => schedule('text'));
-$('flip').onclick = () => { mirror = !mirror; $('flip').setAttribute('aria-pressed', mirror); schedule('render'); };
-
-$('reset').onclick = () => {
-  for (const [id, v] of [['zoom', 100], ['panx', 0], ['pany', 0], ['bri', 100], ['con', 100], ['sat', 100], ['speed', 0], ['skip', 1]]) {
-    $(id).value = v; $(id).dispatchEvent(new Event('input'));
-  }
-  $('tstart').value = 0; $('tend').value = $('tend').max; mirror = false; $('bg').value = '#000000';
-  $('tstart').dispatchEvent(new Event('input')); $('tend').dispatchEvent(new Event('input'));
-  for (const [name, v] of [['fit', 'cover'], ['rot', '0']])
-    document.querySelectorAll(`.seg[data-name="${name}"] button`).forEach((b) => b.setAttribute('aria-pressed', b.dataset.v === v));
-  schedule('render');
-};
-
-document.querySelectorAll('[role=tab]').forEach((t) => t.onclick = () => {
-  mode = t.dataset.tab;
-  document.querySelectorAll('[role=tab]').forEach((x) => x.setAttribute('aria-selected', x === t));
-  $('tab-file').hidden = mode !== 'file';
-  $('tab-text').hidden = mode !== 'text';
-  if (mode === 'text') makeText(); else if (lastFile) loadFile(lastFile); else { source = []; schedule('render'); }
-});
-
-let pending = 0;
-function schedule(what) {
-  cancelAnimationFrame(pending);
-  pending = requestAnimationFrame(() => (what === 'text' && mode === 'text' ? makeText() : render()));
-}
-
-// --- decoding -----------------------------------------------------------------
-async function toBitmap(src, w, h) {
-  const s = Math.min(1, MAX_SOURCE / Math.max(w, h));
-  return createImageBitmap(src, { resizeWidth: Math.max(1, Math.round(w * s)), resizeHeight: Math.max(1, Math.round(h * s)), resizeQuality: 'high' });
-}
-
-async function decodeImage(file) {
-  const out = [];
-  if ('ImageDecoder' in window && (await ImageDecoder.isTypeSupported(file.type))) {
-    const dec = new ImageDecoder({ data: file.stream(), type: file.type });
-    await dec.tracks.ready;
-    const count = Math.min(dec.tracks.selectedTrack.frameCount, 600);
-    for (let i = 0; i < count; i++) {
-      const { image } = await dec.decode({ frameIndex: i });
-      out.push({ bmp: await toBitmap(image, image.displayWidth, image.displayHeight), delay: Math.round((image.duration ?? 100000) / 1000) || 100 });
-      image.close();
-      if (i % 10 === 0) msg(`Decoding… frame ${i + 1}/${count}`);
-    }
-    dec.close();
-  } else {
-    const b = await createImageBitmap(file);
-    out.push({ bmp: await toBitmap(b, b.width, b.height), delay: 100 });
-  }
-  return out;
-}
-
-async function decodeVideo(file) {
-  const v = document.createElement('video');
-  v.muted = true; v.playsInline = true; v.src = URL.createObjectURL(file);
-  await new Promise((r, j) => { v.onloadeddata = r; v.onerror = () => j(new Error("This video format can't be read")); });
-  const fps = +$('vfps').value, step = 1 / fps;
-  const limit = Math.min(maxFrames || 140, HARD_MAX_FRAMES);
-  const frames = Math.min(limit, Math.floor(v.duration * fps) || 1), out = [];
-  for (let i = 0; i < frames; i++) {
-    v.currentTime = i * step;
-    await new Promise((r) => (v.onseeked = r));
-    out.push({ bmp: await toBitmap(v, v.videoWidth, v.videoHeight), delay: Math.round(1000 / fps) });
-    if (i % 5 === 0) msg(`Reading video… ${i + 1}/${frames}`);
-  }
-  URL.revokeObjectURL(v.src);
-  if (v.duration * fps > limit) msg(`Video trimmed to the first ${(limit / fps).toFixed(1)} s (${limit} frames).`);
-  return out;
-}
-
-let lastFile = null;
-async function loadFile(file) {
-  lastFile = file;
-  currentName = file.name;
-  const isVideo = file.type.startsWith('video/');
-  $('fpsctl').hidden = !isVideo;
-  msg('Decoding…');
-  try {
-    source.forEach((f) => f.bmp.close?.());
-    source = isVideo ? await decodeVideo(file) : await decodeImage(file);
-    if (!isVideo || !$('msg').textContent.startsWith('Video trimmed')) msg('');
-  } catch (e) {
-    source = []; msg(e.message || "Couldn't read that file", 'err');
-  }
-  $('tstart').max = $('tend').max = Math.max(0, source.length - 1);
-  $('tstart').value = 0; $('tend').value = $('tend').max;
-  $('tstart').dispatchEvent(new Event('input')); $('tend').dispatchEvent(new Event('input'));
-  render();
-}
-
-// --- text generator -------------------------------------------------------------
-function makeText() {
-  const text = $('txt').value || ' ', size = +$('tsize').value, font = `700 ${size}px ${$('tfont').value}`;
-  const style = segValue('tmode'), fg = $('tfg').value, bgc = $('tbg').value;
-  currentName = `“${text.trim()}”`;
-  const c = new OffscreenCanvas(W, H), ctx = c.getContext('2d');
-  ctx.font = font;
-  const tw = Math.ceil(ctx.measureText(text).width);
-  const frame = (x, show = true) => {
-    ctx.fillStyle = bgc; ctx.fillRect(0, 0, W, H);
-    if (show) { ctx.font = font; ctx.fillStyle = fg; ctx.textBaseline = 'middle'; ctx.fillText(text, x, H / 2 + 1); }
-    return c.transferToImageBitmap();
-  };
-  const fresh = [];
-  if (style === 'scroll') {
-    const limit = Math.min(maxFrames || 140, HARD_MAX_FRAMES);
-    const dist = W + tw;
-    const px = Math.max(+$('tspeed').value, Math.ceil(dist / limit));
-    for (let x = W; x > -tw; x -= px) fresh.push({ bmp: frame(x), delay: 40 });
-  } else {
-    const x = (W - Math.min(tw, W)) / 2;
-    ctx.textAlign = 'left';
-    fresh.push({ bmp: frame(tw > W ? 2 : x), delay: 500 });
-    if (style === 'blink') fresh.push({ bmp: frame(0, false), delay: 500 });
-  }
-  source.forEach((f) => f.bmp.close?.());
-  source = fresh;
-  $('tstart').max = $('tend').max = source.length - 1; $('tstart').value = 0; $('tend').value = source.length - 1;
-  $('tstart').dispatchEvent(new Event('input')); $('tend').dispatchEvent(new Event('input'));
-  render(true);
-}
-
-// --- render pipeline --------------------------------------------------------------
-const work = new OffscreenCanvas(W, H), wctx = work.getContext('2d', { willReadFrequently: true });
-
-function drawFrame(bmp, o) {
-  wctx.save();
-  wctx.filter = 'none';
-  wctx.fillStyle = o.bg; wctx.fillRect(0, 0, W, H);
-  wctx.filter = `brightness(${o.bri}%) contrast(${o.con}%) saturate(${o.sat}%)`;
-  wctx.translate(W / 2 + (o.panx / 100) * W / 2, H / 2 + (o.pany / 100) * H / 2);
-  wctx.rotate((o.rot * Math.PI) / 180);
-  if (o.mirror) wctx.scale(-1, 1);
-  const sw = o.rot % 180 ? bmp.height : bmp.width, sh = o.rot % 180 ? bmp.width : bmp.height;
-  let sx = W / sw, sy = H / sh;
-  if (o.fit === 'cover') sx = sy = Math.max(sx, sy);
-  else if (o.fit === 'contain') sx = sy = Math.min(sx, sy);
-  sx *= o.zoom / 100; sy *= o.zoom / 100;
-  const [dw, dh] = o.rot % 180 ? [bmp.width * sy, bmp.height * sx] : [bmp.width * sx, bmp.height * sy];
-  wctx.imageSmoothingQuality = 'high';
-  wctx.drawImage(bmp, -dw / 2, -dh / 2, dw, dh);
-  wctx.restore();
-  return wctx.getImageData(0, 0, W, H);
-}
-
-function render(isText = false) {
-  if (!source.length) { output = []; updateMeta(); return; }
-  const o = {
-    fit: isText ? 'stretch' : segValue('fit'), rot: +segValue('rot'), mirror, bg: $('bg').value,
-    zoom: +$('zoom').value, panx: +$('panx').value, pany: -$('pany').value,
-    bri: +$('bri').value, con: +$('con').value, sat: +$('sat').value,
-  };
-  const speed = 2 ** +$('speed').value, skip = +$('skip').value;
-  let a = +$('tstart').value, b = +$('tend').value;
-  if (a > b) [a, b] = [b, a];
-  output = [];
-  for (let i = a; i <= b; i += skip) {
-    const delay = source.slice(i, Math.min(i + skip, b + 1)).reduce((s, f) => s + f.delay, 0);
-    output.push({ data: drawFrame(source[i].bmp, o), delay: Math.max(2, Math.min(510, Math.round(delay / speed))) });
-  }
-  updateMeta();
-  play();
-}
-
-function limitFrames() { return Math.min(maxFrames || HARD_MAX_FRAMES, HARD_MAX_FRAMES); }
-
-function updateMeta() {
-  const n = output.length;
-  if (!n) { $('framesinfo').textContent = 'No image yet'; $('sizeinfo').textContent = ''; $('upload').disabled = true; return; }
-  const send = Math.min(n, limitFrames());
-  const secs = Math.ceil(payloadBytes(send) / BYTES_PER_SEC);
-  const over = n > limitFrames();
-  $('framesinfo').textContent = `${n} frame${n > 1 ? 's' : ''}` + (over ? ` · only the first ${send} will fit` : '');
-  $('framesinfo').style.color = over ? 'var(--warn)' : '';
-  $('sizeinfo').textContent = `~${secs < 60 ? secs + ' s' : Math.ceil(secs / 60) + ' min'} to send`;
-  $('upload').disabled = !kb || !!uploading;
-}
-
-let anim = 0;
-function play() {
-  cancelAnimationFrame(anim);
-  const ctx = $('preview').getContext('2d');
-  let i = 0, next = 0;
-  const tick = (t) => {
-    if (output.length && t >= next) {
-      const f = output[i % Math.min(output.length, limitFrames())];
-      ctx.putImageData(f.data, 0, 0);
-      next = t + f.delay; i++;
-    }
-    anim = requestAnimationFrame(tick);
-  };
-  anim = requestAnimationFrame(tick);
-}
-
-// --- inputs -------------------------------------------------------------------------
-const drop = $('drop');
-drop.onclick = () => $('file').click();
-drop.onkeydown = (e) => (e.key === 'Enter' || e.key === ' ') && $('file').click();
-$('file').onchange = (e) => e.target.files[0] && loadFile(e.target.files[0]);
-drop.ondragover = (e) => { e.preventDefault(); drop.classList.add('over'); };
-drop.ondragleave = () => drop.classList.remove('over');
-drop.ondrop = (e) => { e.preventDefault(); drop.classList.remove('over'); e.dataTransfer.files[0] && loadFile(e.dataTransfer.files[0]); };
-window.addEventListener('paste', (e) => {
-  const f = [...(e.clipboardData?.files || [])][0];
-  if (f && mode === 'file') loadFile(f);
-});
-
-// --- device -------------------------------------------------------------------------
-async function attach(k) {
-  kb = k;
-  if (!kb) { pill('Not connected'); $('devpanel').hidden = true; updateMeta(); return; }
-  pill(kb.name, 'ok');
-  $('connect').textContent = 'Reconnect';
-  $('devpanel').hidden = false;
-  try {
-    const info = await kb.info();
-    if (info) {
-      maxFrames = info.maxFrames;
-      $('devinfo').innerHTML = `<span>Firmware ${info.firmware}</span><span>Battery ${info.battery}%${info.charging ? ' ⚡' : ''}</span><span>Up to ${info.maxFrames} frames</span>`;
-      if (mode === 'text') makeText(); else render();
-    }
-  } catch (e) { console.warn(e); }
-  $('synctime').disabled = !kb.cfg;
-  updateMeta();
-}
-
-if (!supported()) {
-  $('nohid').hidden = false; $('connect').disabled = true; pill('WebHID unavailable', 'err');
-} else {
-  Keyboard.reconnect().then((k) => k && attach(k)).catch(() => {});
-  navigator.hid.addEventListener('disconnect', (e) => {
-    if (kb?.owns(e.device)) { kb = null; attach(null); pill('Disconnected', 'err'); }
-  });
-  navigator.hid.addEventListener('connect', async () => { if (!kb) { const k = await Keyboard.reconnect(); k && attach(k); } });
-}
-
-$('connect').onclick = async () => {
-  try {
-    const k = await Keyboard.request();
-    if (!k) { pill("That's not the screen interface", 'err'); msg('Pick the AK820 / 820PRO entry. If only "2.4G Dongle" is listed, switch the keyboard to wired mode.', 'err'); return; }
-    msg(''); attach(k);
-  } catch (e) {
-    if (e.name === 'NotFoundError') return; // chooser dismissed
-    pill('Connection failed', 'err');
-    msg(/access|permission|open/i.test(e.message) ? "The browser can't open the keyboard. On Linux, see Help below. Otherwise close the official driver and try again." : e.message, 'err');
-  }
-};
-
-$('upload').onclick = async () => {
-  const frames = output.slice(0, limitFrames());
-  uploading = new AbortController();
-  $('upload').disabled = true; $('prog').hidden = false; $('cancel').hidden = false; $('prog').value = 0;
-  pill('Sending…', 'busy');
-  const t0 = performance.now();
-  try {
-    const payload = await kb.upload(frames, {
-      signal: uploading.signal,
-      onProgress: (p) => {
-        $('prog').value = p;
-        const el = (performance.now() - t0) / 1000, left = Math.max(0, el / p - el);
-        msg(`Sending… ${Math.round(p * 100)}% · ${Math.ceil(left)} s left`);
-      },
-    });
-    msg(`Done. ${frames.length} frame${frames.length > 1 ? 's' : ''} on your keyboard.`, 'ok');
-    await saveHistory(payload, currentName || 'Image');
-  } catch (e) {
-    msg(e.message === 'cancelled' ? 'Cancelled. The screen may show a partial image until you send again.' : `Send failed: ${e.message}. Check the cable and try again.`, 'err');
-  }
-  uploading = null;
-  $('prog').hidden = true; $('cancel').hidden = true;
-  if (kb) pill(kb.name, 'ok');
-  updateMeta();
-};
-$('cancel').onclick = () => uploading?.abort();
-
-$('synctime').onclick = async () => {
-  try { await kb.syncClock(); msg('Clock synced to this computer.', 'ok'); } catch (e) { msg(e.message, 'err'); }
-};
-$('setbuiltin').onclick = async () => {
-  try { await kb.showBuiltIn(+$('builtin').value); msg('Built-in animation selected.', 'ok'); } catch (e) { msg(e.message, 'err'); }
-};
-
-// --- history (IndexedDB, this browser only) ----------------------------------------
-const HISTORY_MAX = 30;
-const dbp = new Promise((res, rej) => {
-  const r = indexedDB.open('ak820', 1);
-  r.onupgradeneeded = () => r.result.createObjectStore('history', { keyPath: 'id', autoIncrement: true });
-  r.onsuccess = () => res(r.result);
-  r.onerror = () => rej(r.error);
-});
-async function store(mode, fn) {
-  const db = await dbp;
-  return new Promise((res, rej) => {
-    const tx = db.transaction('history', mode), req = fn(tx.objectStore('history'));
-    tx.oncomplete = () => res(req?.result);
-    tx.onerror = () => rej(tx.error);
-  });
-}
-
-function thumb(imageData) {
-  const c = document.createElement('canvas');
-  c.width = W; c.height = H;
-  c.getContext('2d').putImageData(imageData, 0, 0);
-  return c.toDataURL('image/png');
-}
-
-async function saveHistory(payload, name) {
-  try {
-    const [first] = parsePayload(payload, 1);
-    await store('readwrite', (s) => s.add({ date: Date.now(), name, frames: payload[0], payload, thumb: thumb(first.data) }));
-    const keys = await store('readonly', (s) => s.getAllKeys());
-    if (keys.length > HISTORY_MAX) await store('readwrite', (s) => { for (const k of keys.slice(0, keys.length - HISTORY_MAX)) s.delete(k); });
-    selected = null;
-    renderHistory();
-  } catch (e) { console.warn('history not saved', e); }
-}
-
-let selected = null;
-const when = (t) => {
-  const d = new Date(t), today = new Date().toDateString() === d.toDateString();
-  return today ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : d.toLocaleDateString([], { month: 'short', day: 'numeric' });
-};
-
-async function renderHistory() {
-  let items = [];
-  try { items = (await store('readonly', (s) => s.getAll())).sort((a, b) => b.id - a.id); }
-  catch { $('histpanel').hidden = true; return; }
-  const box = $('hist');
-  box.replaceChildren();
-  $('histclear').hidden = !items.length;
-  if (!items.length) {
-    const p = document.createElement('p'); p.className = 'empty';
-    p.textContent = 'Nothing sent yet. Your first upload will show up here.';
-    box.append(p); return;
-  }
-  items.forEach((it, i) => {
-    const b = document.createElement('button');
-    b.className = 'hitem' + (selected === it.id ? ' sel' : '');
-    b.title = `Load "${it.name}" (sent ${new Date(it.date).toLocaleString()})`;
-    const img = document.createElement('img'); img.src = it.thumb; img.alt = '';
-    const cap = document.createElement('span'); cap.className = 'cap';
-    const nm = document.createElement('b'); nm.textContent = it.name;
-    cap.append(nm, document.createElement('br'), `${when(it.date)} · ${it.frames} fr`);
-    b.append(img, cap);
-    if (i === 0) { const badge = document.createElement('span'); badge.className = 'badge'; badge.textContent = 'Now'; badge.title = 'Last thing sent from this browser'; b.append(badge); }
-    const del = document.createElement('span'); del.className = 'del'; del.textContent = '✕'; del.title = 'Delete';
-    del.setAttribute('role', 'button'); del.setAttribute('aria-label', `Delete ${it.name}`);
-    del.onclick = async (e) => { e.stopPropagation(); await store('readwrite', (s) => s.delete(it.id)); renderHistory(); };
-    b.append(del);
-    b.onclick = () => loadHistory(it);
-    box.append(b);
-  });
-}
-
-async function loadHistory(it) {
-  const frames = parsePayload(it.payload);
-  source.forEach((f) => f.bmp.close?.());
-  source = await Promise.all(frames.map(async (f) => ({ bmp: await createImageBitmap(f.data), delay: f.delay })));
-  mode = 'file'; lastFile = null; currentName = it.name; selected = it.id;
-  document.querySelectorAll('[role=tab]').forEach((x) => x.setAttribute('aria-selected', x.dataset.tab === 'file'));
-  $('tab-file').hidden = false; $('tab-text').hidden = true; $('fpsctl').hidden = true;
-  $('tstart').max = $('tend').max = source.length - 1;
-  $('reset').click();
-  renderHistory();
-  msg(`Showing "${it.name}", sent ${new Date(it.date).toLocaleString()}. Press Send to put it back.`);
-  if (innerWidth < 820) $('preview').scrollIntoView({ behavior: 'smooth', block: 'center' });
-}
-
-$('histclear').onclick = async () => {
-  if (!confirm('Delete all saved history from this browser?')) return;
-  await store('readwrite', (s) => s.clear());
-  renderHistory();
-};
-
-renderHistory();
-
-// Start with a friendly default so the preview isn't empty.
-render();
-</script>
+<script type="module" src="app.js"></script>
 </body>
 </html>

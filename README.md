@@ -6,7 +6,11 @@ with no vendor driver, on Linux, macOS or Windows.
 **▶ Use it in your browser: https://fromagge.github.io/ak820-screen/**
 (Chrome, Edge, Brave or Opera on desktop. Nothing to install.)
 
-- Drop in a GIF / PNG / JPG / WebP / APNG / MP4 / WebM, or make scrolling text
+- **Animations** made from scratch, all seamless loops: Rainbow (6 patterns), Plasma, Matrix, Warp, Fire, Snow, Hearts, Bounce, Ripples, Equalizer, plus a 🎲 Surprise me button
+- Drop in a GIF / PNG / JPG / WebP / APNG / MP4 / WebM
+- **Text**: static, scroll, wave, typewriter or blink, in solid or rainbow colours, multi-line, auto-fit
+- **Draw** directly at 128×128, including a rainbow brush
+- **Effects** on anything: rainbow colour cycle / wash / border, spin, shake, zoom pulse, glow pulse, glitch, sparkles, CRT lines, vignette, poster, black & white, sepia, invert, hue shift, pixelate, captions. Effects turn a still image into a loop
 - Fill / fit / stretch, zoom, pan, rotate, mirror, brightness, contrast, saturation
 - Change speed, trim frames, drop every Nth frame to fit the keyboard's ~140-frame limit
 - Sync the screen clock, switch to built-in animations
