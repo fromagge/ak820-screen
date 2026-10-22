@@ -6,6 +6,9 @@ const $ = (id) => document.getElementById(id);
 const BYTES_PER_SEC = 30000;
 const MAX_SOURCE = 512;      // downscale decoded frames to bound memory
 const HARD_MAX_FRAMES = 255; // header byte limit
+// The screen can't show a frame for less than ~60 ms (measured on fw 1.16: shorter delays
+// just play at that rate), so faster playback has to drop frames instead.
+const MIN_FRAME_MS = 60;
 
 let kb = null, maxFrames = 0;
 let source = [];   // [{ bmp: ImageBitmap, delay }]
@@ -46,6 +49,7 @@ function route(kind) {
   pending = requestAnimationFrame(() => {
     if (kind === 'text') { if (mode === 'text') makeText(); }
     else if (kind === 'anim') { if (mode === 'anim') makeAnim(); }
+    else if (kind === 'backdrop') mode === 'text' ? makeText() : render();
     else render();
   });
 }
@@ -79,7 +83,7 @@ function setRange(id, v) { $(id).value = v; updateOut($(id)); }
 $('reset').onclick = () => {
   for (const [id, v] of [['zoom', 100], ['panx', 0], ['pany', 0], ['bri', 100], ['con', 100], ['sat', 100], ['speed', 0], ['skip', 1]]) setRange(id, v);
   setRange('tstart', 0); setRange('tend', $('tend').max);
-  $('bg').value = '#000000'; setChip($('flip'), false);
+  $('bg').value = '#000000'; $('bganim').value = ''; setChip($('flip'), false);
   setSeg('fit', 'cover'); setSeg('rot', '0');
   render();
 };
@@ -177,7 +181,12 @@ function makeText() {
   const bgc = $('tbg').value;
   currentName = `“${text.replace(/\s+/g, ' ').slice(0, 24)}”`;
   const c = new OffscreenCanvas(W, H), ctx = c.getContext('2d');
-  const frame = (draw) => { ctx.fillStyle = bgc; ctx.fillRect(0, 0, W, H); draw?.(); return c.transferToImageBitmap(); };
+  const clear = $('bganim').value; // let the animated background show through
+  const frame = (draw) => {
+    if (clear) ctx.clearRect(0, 0, W, H); else { ctx.fillStyle = bgc; ctx.fillRect(0, 0, W, H); }
+    draw?.();
+    return c.transferToImageBitmap();
+  };
   const base = { family, cy: H / 2 + 1, fill: $('tfg').value, rainbow, outline: chipOn('toutline') ? '#000' : null };
   const limit = frameLimit(), fresh = [];
 
@@ -187,7 +196,7 @@ function makeText() {
     const tw = Math.ceil(ctx.measureText(line).width), dist = W + tw;
     const px = Math.max(speed, Math.ceil(dist / limit)), n = Math.ceil(dist / px);
     for (let k = 0; k < n; k++)
-      fresh.push({ bmp: frame(() => drawLines(ctx, [line], { ...base, size: maxSize, cx: W - k * px + tw / 2, phase: k / n })), delay: 40 });
+      fresh.push({ bmp: frame(() => drawLines(ctx, [line], { ...base, size: maxSize, cx: W - k * px + tw / 2, phase: k / n })), delay: MIN_FRAME_MS });
   } else {
     const { size, lines } = fitText(ctx, text, family, maxSize);
     const o = { ...base, size };
@@ -273,7 +282,7 @@ function makeAnim() {
   const n = Math.min(+$('gframes').value, frameLimit());
   const bmps = renderGenerator(gen, readGenParams(), n, genSeed);
   currentName = gen.name;
-  setSource(bmps.map((bmp) => ({ bmp, delay: 50 })));
+  setSource(bmps.map((bmp) => ({ bmp, delay: MIN_FRAME_MS })));
 }
 
 $('shuffle').onclick = () => { genSeed = 1 + Math.floor(Math.random() * 1e6); makeAnim(); };
@@ -373,6 +382,7 @@ function drawFrame(bmp, o, fx, t, i) {
   wctx.save();
   wctx.filter = 'none';
   wctx.fillStyle = o.bg; wctx.fillRect(0, 0, W, H);
+  if (o.backdrop) wctx.drawImage(o.backdrop, 0, 0);
   wctx.filter = `brightness(${o.bri * m.bri}%) contrast(${o.con}%) saturate(${o.sat}%) hue-rotate(${m.hue}deg)${m.filters}`;
   wctx.translate(W / 2 + (o.panx / 100) * W / 2 + m.dx, H / 2 + (o.pany / 100) * H / 2 + m.dy);
   wctx.rotate(((o.rot + m.spin) * Math.PI) / 180);
@@ -391,6 +401,33 @@ function drawFrame(bmp, o, fx, t, i) {
   return wctx.getImageData(0, 0, W, H);
 }
 
+// Keep every frame at least MIN_FRAME_MS: walk the intended timeline and show whichever
+// source frame is due, skipping the ones that would be on screen too briefly.
+function retime(plan) {
+  if (plan.every((p) => p.delay >= MIN_FRAME_MS)) return plan;
+  const total = plan.reduce((s, p) => s + p.delay, 0), out = [];
+  let t = 0, i = 0, start = 0; // start: when source frame i begins
+  while (t < total) {
+    while (start + plan[i].delay <= t) start += plan[i++].delay;
+    const delay = Math.max(MIN_FRAME_MS, start + plan[i].delay - t);
+    out.push({ bmp: plan[i].bmp, delay });
+    t += delay;
+  }
+  return out;
+}
+
+// Animated background frames, cached per generator and loop length.
+let backdropCache = { key: '', frames: [] };
+function backdropFrames(id, n) {
+  const key = id + ':' + n;
+  if (backdropCache.key !== key) {
+    backdropCache.frames.forEach((b) => b.close());
+    const g = GENERATORS.find((x) => x.id === id);
+    backdropCache = { key, frames: renderGenerator(g, defaults(g), n, 1) };
+  }
+  return backdropCache.frames;
+}
+
 function render() {
   if (!source.length) { output = []; updateMeta(); return; }
   const o = {
@@ -407,11 +444,14 @@ function render() {
     const delay = source.slice(i, Math.min(i + skip, b + 1)).reduce((s, f) => s + f.delay, 0);
     plan.push({ bmp: source[i].bmp, delay: delay / speed });
   }
-  if (plan.length === 1 && isAnimated(fx))
+  const bganim = $('bganim').value;
+  if (plan.length === 1 && (isAnimated(fx) || bganim))
     plan = Array.from({ length: Math.min(fx.loop, frameLimit()) }, () => ({ bmp: plan[0].bmp, delay: 70 / speed }));
+  plan = retime(plan);
   const loop = Math.min(plan.length, frameLimit()); // effects loop over what actually gets sent
+  const backdrop = bganim ? backdropFrames(bganim, loop) : null;
   output = plan.map((p, i) => ({
-    data: drawFrame(p.bmp, o, fx, (i % loop) / loop, i),
+    data: drawFrame(p.bmp, { ...o, backdrop: backdrop?.[i % loop] }, fx, (i % loop) / loop, i),
     delay: Math.max(2, Math.min(510, Math.round(p.delay))),
   }));
   updateMeta();
@@ -635,6 +675,7 @@ $('histclear').onclick = async () => {
 
 // --- start ----------------------------------------------------------------------------
 buildGens();
+for (const g of GENERATORS) $('bganim').append(new Option(g.name, g.id));
 buildParams(defaults(gen));
 renderHistory();
 showTab('anim');

@@ -76,6 +76,10 @@ header (0xFF-filled, 256 bytes)
 frames      N × 128×128 pixels, row-major, RGB565 **little-endian** (low byte first)
 ```
 
+Each delay is how long that frame stays up, but the screen can't redraw faster than about
+**60 ms per frame** (fw 1.16, timed on the device: 100 frames at 10 ms loop in ~6 s, at 100 ms in
+~10 s). Shorter delays just play at the 60 ms rate, so faster playback has to drop frames.
+
 Chunked into `report_size - 8` bytes. Each packet uses a *custom* 8-byte header:
 
 ```

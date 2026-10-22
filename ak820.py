@@ -245,7 +245,8 @@ def cmd_upload(a):
     payload = build_payload(frames)
     print(f"  {len(frames)} frame(s), {len(payload)} bytes", file=sys.stderr)
     upload(bulk, payload, bulk.report_len)
-    save_history(payload, os.path.basename(a.image))
+    if not a.no_history:
+        save_history(payload, os.path.basename(a.image))
     print("done")
 
 
@@ -404,6 +405,7 @@ def main():
     u.add_argument("--delay", type=int, help="override per-frame delay (ms)")
     u.add_argument("--max-frames", type=int)
     u.add_argument("--preview", help="also save a PNG preview of frame 0")
+    u.add_argument("--no-history", action="store_true", help="don't record this upload in history")
     u.set_defaults(fn=cmd_upload)
 
     b = s.add_parser("builtin", help="select a built-in animation")

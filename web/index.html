@@ -312,6 +312,9 @@ textarea { font: inherit; color: var(--ink); background: var(--field); border: 1
           </div>
           <div class="ctl"><label for="zoom">Zoom <output id="zoom-o"></output></label><input id="zoom" type="range" min="100" max="400" value="100"></div>
           <div class="ctl"><label for="bg">Background</label><div class="row"><input id="bg" type="color" value="#000000"><button class="chip" id="flip" aria-pressed="false">Mirror</button></div></div>
+          <div class="ctl"><label for="bganim">Animated background</label>
+            <select id="bganim" data-on="backdrop"><option value="">None</option></select>
+          </div>
           <div class="ctl"><label for="panx">Pan left / right <output id="panx-o"></output></label><input id="panx" type="range" min="-100" max="100" value="0"></div>
           <div class="ctl"><label for="pany">Pan up / down <output id="pany-o"></output></label><input id="pany" type="range" min="-100" max="100" value="0"></div>
           <div class="ctl"><label for="bri">Brightness <output id="bri-o"></output></label><input id="bri" type="range" min="20" max="200" value="100"></div>
