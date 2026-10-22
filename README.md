@@ -12,6 +12,7 @@ with no vendor driver, on Linux, macOS or Windows.
 - **Draw** directly at 128×128, including a rainbow brush
 - **Effects** on anything: rainbow colour cycle / wash / border, spin, shake, zoom pulse, glow pulse, glitch, sparkles, CRT lines, vignette, poster, black & white, sepia, invert, hue shift, pixelate, captions. Effects turn a still image into a loop
 - Fill / fit / stretch, zoom, pan, rotate, mirror, brightness, contrast, saturation
+- **GIF search** (GIPHY, up to R-rated): paste a free key from developers.giphy.com once; it stays in your browser
 - **Animated background** (rainbow, plasma, matrix, …) behind text and transparent PNGs/GIFs
 - Change speed (faster than the screen's ~60 ms/frame drops frames instead), trim frames, drop every Nth frame to fit the keyboard's ~140-frame limit
 - Sync the screen clock, switch to built-in animations

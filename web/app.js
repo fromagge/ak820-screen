@@ -504,6 +504,65 @@ window.addEventListener('paste', (e) => {
   if (f) loadFile(f);
 });
 
+// --- GIPHY search ------------------------------------------------------------------
+const GIPHY = 'https://api.giphy.com/v1/gifs/';
+const keyStore = {
+  get: () => { try { return localStorage.getItem('giphyKey') || ''; } catch { return ''; } },
+  set: (v) => { try { localStorage.setItem('giphyKey', v); } catch {} },
+};
+let gquery = '', goffset = 0, gseq = 0; // gseq: drop replies to superseded searches
+$('gkey').value = keyStore.get();
+$('gkeyrow').hidden = !!$('gkey').value;
+$('gkey').onchange = () => { keyStore.set($('gkey').value.trim()); searchGifs(); };
+
+async function searchGifs(more = false) {
+  const key = $('gkey').value.trim();
+  if (!key) { $('gkeyrow').hidden = false; $('gkey').focus(); return msg('Paste a GIPHY API key to search.'); }
+  if (!more) { gquery = $('gq').value.trim(); goffset = 0; $('gifs').replaceChildren(); }
+  const seq = ++gseq;
+  const q = new URLSearchParams({ api_key: key, limit: 24, offset: goffset, rating: $('grating').value });
+  if (gquery) q.set('q', gquery);
+  msg('Searching…');
+  try {
+    const r = await fetch(GIPHY + (gquery ? 'search?' : 'trending?') + q);
+    if (r.status === 401 || r.status === 403) { $('gkeyrow').hidden = false; throw new Error('GIPHY rejected that API key'); }
+    if (!r.ok) throw new Error(`GIPHY error ${r.status}`);
+    const { data, pagination } = await r.json();
+    if (seq !== gseq) return;
+    $('gkeyrow').hidden = true;
+    goffset += data.length;
+    for (const g of data) {
+      const b = document.createElement('button');
+      b.title = g.title || 'GIF';
+      const img = document.createElement('img');
+      img.src = g.images.fixed_width_small?.webp || g.images.fixed_width_small?.url || g.images.fixed_width.url;
+      img.alt = g.title || ''; img.loading = 'lazy';
+      b.append(img);
+      b.onclick = () => pickGif(g, b);
+      $('gifs').append(b);
+    }
+    $('gmore').hidden = goffset >= (pagination?.total_count ?? 0);
+    msg(data.length || more ? '' : 'Nothing found.');
+  } catch (e) { msg(e.message, 'err'); }
+}
+
+async function pickGif(g, btn) {
+  btn.disabled = true; msg('Downloading…');
+  try {
+    const r = await fetch(g.images.fixed_width.url); // 200 px wide, every frame kept
+    if (!r.ok) throw new Error(`Download failed (${r.status})`);
+    const blob = await r.blob();
+    await loadFile(new File([blob], (g.title || g.id) + '.gif', { type: blob.type || 'image/gif' }));
+    if (innerWidth < 820) $('preview').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  } catch (e) { msg(e.message, 'err'); }
+  btn.disabled = false;
+}
+
+$('gsearch').onclick = () => searchGifs();
+$('gq').onkeydown = (e) => { if (e.key === 'Enter') searchGifs(); };
+$('grating').onchange = () => $('gifs').childElementCount && searchGifs();
+$('gmore').onclick = () => searchGifs(true);
+
 // --- device -------------------------------------------------------------------------
 async function attach(k) {
   kb = k;

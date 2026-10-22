@@ -40,7 +40,7 @@ header { padding: 28px 0 20px; display: flex; gap: 16px; align-items: center; ju
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); }
 .pill.ok .dot { background: var(--ok); } .pill.err .dot { background: var(--err); } .pill.busy .dot { background: var(--warn); }
 
-button, select, input[type=number], input[type=text], input[type=color] {
+button, select, input[type=number], input[type=text], input[type=search], input[type=color] {
   font: inherit; color: var(--ink); background: var(--field); border: 1px solid var(--line); border-radius: 8px; padding: 7px 12px;
 }
 input[type=color] { padding: 2px; width: 40px; height: 34px; }
@@ -75,6 +75,13 @@ progress { width: 100%; height: 6px; accent-color: var(--accent); }
 
 .drop { border: 2px dashed var(--line); border-radius: 12px; padding: 28px 16px; text-align: center; color: var(--muted); cursor: pointer; transition: border-color .15s, background .15s; }
 .drop:hover, .drop.over { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 6%, transparent); color: var(--ink); }
+.gsearch { margin-top: 14px; display: grid; gap: 10px; }
+.gsearch .row input[type=search] { flex: 1; min-width: 0; }
+.gifs { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 6px; }
+.gifs:empty { display: none; }
+.gifs button { padding: 0; aspect-ratio: 1; overflow: hidden; border-radius: 8px; }
+.gifs img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.gifs button:disabled { opacity: .5; }
 .drop strong { color: var(--ink); display: block; margin-bottom: 2px; }
 
 .controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 20px; }
@@ -199,6 +206,19 @@ textarea { font: inherit; color: var(--ink); background: var(--field); border: 1
             GIF, PNG, JPG, WebP, APNG, MP4, WebM
           </div>
           <input id="file" type="file" accept="image/*,video/*" hidden>
+          <div class="gsearch">
+            <div class="row">
+              <input id="gq" type="search" placeholder="Search GIPHY…" aria-label="Search GIFs" data-on="none">
+              <select id="grating" aria-label="Rating" data-on="none"><option value="g">G</option><option value="pg">PG</option><option value="pg-13">PG-13</option><option value="r" selected>R</option></select>
+              <button id="gsearch">Search</button>
+            </div>
+            <div id="gkeyrow" class="ctl full" hidden>
+              <label for="gkey">GIPHY API key <a href="https://developers.giphy.com/dashboard/?create=true" target="_blank" rel="noopener">get a free one</a></label>
+              <input id="gkey" type="text" placeholder="Paste your key; it stays in this browser" autocomplete="off" spellcheck="false" data-on="none">
+            </div>
+            <div id="gifs" class="gifs"></div>
+            <button id="gmore" hidden>More</button>
+          </div>
         </div>
 
         <div id="tab-text" hidden>
