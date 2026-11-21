@@ -72,6 +72,7 @@ if you want to build your own tool on top.
 | Keyboard | USB ID | Firmware | Result |
 |---|---|---|---|
 | Epomaker × AJAZZ AK820 Pro | `0C45:800A` | 1.16 | upload ✓, info ✓ |
+| AK820 Pro with `FF13`+`FF68` interfaces (no `FF67`) | `0C45:800A` | bcdDevice 1.11 | web: supported, see [PROTOCOL.md](PROTOCOL.md#ff13--ff68-layout-eg-0c45800a-linux-usb-cable) (CLI not yet) |
 
 Got another model with a screen working (or not)? Please open an issue with the output of
 `./ak820.py info`.
