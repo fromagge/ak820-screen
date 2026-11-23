@@ -1,9 +1,10 @@
-import { Keyboard, supported, W, H, payloadBytes, parsePayload } from './ak820.js';
+import { Keyboard, LAYOUT, supported, W, H, payloadBytes, parsePayload } from './ak820.js';
 import { GENERATORS, defaults, renderGenerator } from './gen.js';
 import { fitText, drawLines, font, motion, post, isAnimated } from './fx.js';
 
 const $ = (id) => document.getElementById(id);
-const BYTES_PER_SEC = 30000;
+const BYTES_PER_SEC = 30000; // legacy layout; the FF13 layout is slower, see bytesPerSec()
+const bytesPerSec = () => (kb?.layout === LAYOUT.FF13 ? 19000 : BYTES_PER_SEC);
 const MAX_SOURCE = 512;      // downscale decoded frames to bound memory
 const HARD_MAX_FRAMES = 255; // header byte limit
 // The screen can't show a frame for less than ~60 ms (measured on fw 1.16: shorter delays
@@ -462,7 +463,7 @@ function updateMeta() {
   const n = output.length;
   if (!n) { $('framesinfo').textContent = 'No image yet'; $('sizeinfo').textContent = ''; $('upload').disabled = true; return; }
   const send = Math.min(n, frameLimit());
-  const secs = Math.ceil(payloadBytes(send) / BYTES_PER_SEC);
+  const secs = Math.ceil(payloadBytes(send) / bytesPerSec());
   const over = n > frameLimit();
   $('framesinfo').textContent = `${n} frame${n > 1 ? 's' : ''}` + (over ? ` · only the first ${send} will fit` : '');
   $('framesinfo').style.color = over ? 'var(--warn)' : '';
@@ -574,11 +575,15 @@ async function attach(k) {
     const info = await kb.info();
     if (info) {
       maxFrames = info.maxFrames;
-      $('devinfo').innerHTML = `<span>Firmware ${info.firmware}</span><span>Battery ${info.battery}%${info.charging ? ' ⚡' : ''}</span><span>Up to ${info.maxFrames} frames</span>`;
+      $('devinfo').innerHTML = kb.layout === LAYOUT.FF13
+        ? `<span>Layout FF13/FF68</span><span>Up to ${info.maxFrames} frames</span>`
+        : `<span>Firmware ${info.firmware}</span><span>Battery ${info.battery}%${info.charging ? ' ⚡' : ''}</span><span>Up to ${info.maxFrames} frames</span>`;
       route(mode === 'text' ? 'text' : mode === 'anim' ? 'anim' : 'render');
     }
   } catch (e) { console.warn(e); }
   $('synctime').disabled = !kb.cfg;
+  // FF13 layout: no built-in index command known, and an upload can't be cancelled safely.
+  $('builtin').disabled = $('setbuiltin').disabled = kb.layout === LAYOUT.FF13;
   updateMeta();
 }
 
@@ -607,7 +612,7 @@ $('connect').onclick = async () => {
 $('upload').onclick = async () => {
   const frames = output.slice(0, frameLimit());
   uploading = new AbortController();
-  $('upload').disabled = true; $('prog').hidden = false; $('cancel').hidden = false; $('prog').value = 0;
+  $('upload').disabled = true; $('prog').hidden = false; $('cancel').hidden = kb.layout === LAYOUT.FF13; $('prog').value = 0;
   pill('Sending…', 'busy');
   const t0 = performance.now();
   try {

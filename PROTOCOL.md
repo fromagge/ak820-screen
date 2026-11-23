@@ -137,3 +137,31 @@ were all tried, and only the `0x50` ones are acknowledged (and they are still no
 Over the 2.4 GHz dongle (`0C45:FEFE`, interface `FF60`, 32-byte reports) the keyboard answers
 `GET_DEVICE_INFO` (`workMode` 2) and acknowledges `0x50` chunks with a `55 50 …` echo, but the screen
 doesn't change.
+
+## FF13 + FF68 layout (e.g. `0C45:800A`, Linux, USB cable)
+
+Some units expose no `FF67` interface. They have `FF13` (64-byte input/output + 64-byte **feature** report,
+usage `0x0001`) for commands and `FF68` (64-byte input, **4096-byte output**, usage `0x0061`) for pixels
+(see issue #1). `web/ak820.js` picks this layout when `FF67` is absent and both are present.
+The sequence matches the one documented by [igordev96/AJAZZ-AK820-Pro-Driver](https://github.com/igordev96/AJAZZ-AK820-Pro-Driver)
+(`docs/01-protocol.md` §9–10); all reports use report ID 0.
+
+Every command is a 64-byte feature report. The reply is read back from the same buffer as
+`04 <cmd> 00 <status>` (`0x01` ok, `0xFF` refused). A read right after the write returns the request
+itself (status 0), so wait ~220 ms, then poll every 60 ms.
+
+```
+Animation                              Clock
+04 18                begin             04 18
+04 72 03 00×5 <n lo> <n hi>  announce  04 28 00×6 01
+<n> × 4096-byte output reports (FF68,  00 01 5A YY MM DD hh mm ss 00 wd … AA 55   (64-byte body)
+  ~150 ms apart)                       04 02
+04 02                commit
+```
+
+`n = frames × 8 + 1` (16-bit little-endian). The buffer is the usual header (frame count, then one delay
+byte per frame in 2 ms units, `0xFF` padding to 256) + RGB565-LE frames + `0xFF` up to `n × 4096`.
+
+**Do not interrupt an upload after the announce is accepted**: `04 F0` does not cancel it and the keyboard
+stays unresponsive until it is replugged, so the web UI hides *Cancel* on this layout. Built-in animations
+(`0x51` in the other layout) have no known command here and are disabled. Tested: `0C45:800A`, bcdDevice 1.11.
